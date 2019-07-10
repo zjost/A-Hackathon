@@ -45,18 +45,7 @@ def evaluate(model, feats, labels):
     correct = (indices == labels).sum()
     return (correct / labels.shape[0]).asscalar()
 
-train_feat, train_label, test_feat, test_label = load_data()
-print(train_feat.shape, train_label.shape)
-print(test_feat.shape, test_label.shape)
 
-train_feat = nd.array(train_feat)
-train_label = nd.array(train_label)
-test_feat = nd.array(test_feat)
-test_label = nd.array(test_label)
-
-batch_size = 1024
-dataset = gluon.data.dataset.ArrayDataset(train_feat, train_label)
-dataloader = gluon.data.DataLoader(dataset, batch_size=batch_size)
 
 class MLP(gluon.Block):
     def __init__(self):
@@ -69,21 +58,36 @@ class MLP(gluon.Block):
         h = nd.relu(h)
         h = self.fc2(h)
         return h
+    
+if __name__ == '__main__':
+    
+    train_feat, train_label, test_feat, test_label = load_data()
+    print(train_feat.shape, train_label.shape)
+    print(test_feat.shape, test_label.shape)
 
-model = MLP()
-model.initialize()
-trainer = gluon.Trainer(model.collect_params(), 'adam', {'learning_rate': 0.1, 'wd': 5e-4})
-loss_fcn = gluon.loss.SoftmaxCELoss()
+    train_feat = nd.array(train_feat)
+    train_label = nd.array(train_label)
+    test_feat = nd.array(test_feat)
+    test_label = nd.array(test_label)
 
-for epoch in range(200):
-    for i, (feat, lbl) in enumerate(dataloader):
-        with autograd.record():
-            logits = model(feat)
-            loss = loss_fcn(logits, lbl).sum() / batch_size
+    batch_size = 1024
+    dataset = gluon.data.dataset.ArrayDataset(train_feat, train_label)
+    dataloader = gluon.data.DataLoader(dataset, batch_size=batch_size)
 
-        loss.backward()
-        trainer.step(batch_size=1)
+    model = MLP()
+    model.initialize()
+    trainer = gluon.Trainer(model.collect_params(), 'adam', {'learning_rate': 0.1, 'wd': 5e-4})
+    loss_fcn = gluon.loss.SoftmaxCELoss()
 
-    train_acc = evaluate(model, feat, lbl)
-    test_acc = evaluate(model, test_feat, test_label)
-    print('Epoch %d, Loss %f, Train acc %f, Test acc %f' % (epoch, loss.asscalar(), train_acc, test_acc))
+    for epoch in range(200):
+        for i, (feat, lbl) in enumerate(dataloader):
+            with autograd.record():
+                logits = model(feat)
+                loss = loss_fcn(logits, lbl).sum() / batch_size
+
+            loss.backward()
+            trainer.step(batch_size=1)
+
+        train_acc = evaluate(model, feat, lbl)
+        test_acc = evaluate(model, test_feat, test_label)
+        print('Epoch %d, Loss %f, Train acc %f, Test acc %f' % (epoch, loss.asscalar(), train_acc, test_acc))
