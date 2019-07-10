@@ -67,7 +67,7 @@ def evaluate(model, g, feats, labels, mask):
 
 g, feat, label, train_mask, test_mask = load_data()
 
-ctx = mx.gpu(0)
+ctx = mx.cpu(0)
 feat = nd.array(feat, ctx=ctx)
 label = nd.array(label, ctx=ctx)
 train_mask = nd.array(train_mask, ctx=ctx)
@@ -75,39 +75,20 @@ test_mask = nd.array(test_mask, ctx=ctx)
 n_train_samples = train_mask.shape[0]
 
 # calculate normalization
-#degs = g.in_degrees().astype('float32').asnumpy()
-#norm = np.power(degs, -0.5).reshape(-1, 1)
-#norm[np.isinf(norm)] = 0.
-#norm = nd.array(norm, ctx=ctx)
-#g.ndata['norm'] = norm
+degs = g.in_degrees().astype('float32').asnumpy()
+norm = np.power(degs, -0.5).reshape(-1, 1)
+norm[np.isinf(norm)] = 0.
+norm = nd.array(norm, ctx=ctx)
+g.ndata['norm'] = norm
 
-class GraphConv(gluon.Block):
-    def __init__(self, n_in, n_out):
-        super(GraphConv, self).__init__()
-        self.fc = nn.Dense(n_out)
-        self.fc2 = nn.Dense(n_out)
+#########################################################################
+# Define your own model here
+########################################################################
 
-    def forward(self, g, feats):
-        h = self.fc(feats)
-        g.ndata['h'] = h #* g.ndata['norm']
-        g.update_all(fn.copy_src('h', 'm'), fn.sum('m', 'h'))
-        hh = g.ndata.pop('h') #* g.ndata['norm']
-        h = nd.concat(h, hh, dim=1)
-        return self.fc2(h)
+class Model(gluon.Block):
+    pass
 
-class GCN(gluon.Block):
-    def __init__(self):
-        super(GCN, self).__init__()
-        self.gc1 = GraphConv(feat.shape[1], 64)
-        self.gc2 = GraphConv(64, 50)
-
-    def forward(self, g, feats):
-        h = self.gc1(g, feats)
-        h = nd.relu(h)
-        h = self.gc2(g, h)
-        return h
-
-model = GCN()
+model = Model()
 model.initialize(ctx=ctx)
 trainer = gluon.Trainer(model.collect_params(), 'adam',
                         {'learning_rate': 0.01, 'wd': 5e-4})
