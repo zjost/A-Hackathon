@@ -34,7 +34,12 @@ def load_data():
     print('Generating graph')
     u = np.load('./reddit-top50/u.npy')
     v = np.load('./reddit-top50/v.npy')
+    # sparsify the graph to keep only 10% of the edges
+    keep_idx = np.random.choice(len(u), len(u) // 10, replace=False)
+    u = u[keep_idx]
+    v = v[keep_idx]
     adj = sp.coo_matrix((np.ones((len(u),)), (u, v)), shape=(n, n))
+    # add self-loop
     adj += sp.eye(n, n)
     g = dgl.DGLGraph(adj)
     print('#Nodes:', g.number_of_nodes())
